@@ -1,0 +1,6 @@
+name: mruby-procutil
+description: Procutil class
+author: Uchio Kondo
+website: https://github.com/haconiwa/mruby-procutil
+protocol: git
+repository: https://github.com/haconiwa/mruby-procutil.git

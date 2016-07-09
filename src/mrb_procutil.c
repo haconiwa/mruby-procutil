@@ -8,64 +8,36 @@
 
 #include "mruby.h"
 #include "mruby/data.h"
+#include "mruby/error.h"
+#include "mruby/string.h"
 #include "mrb_procutil.h"
+
+#include <unistd.h>
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
 
-typedef struct {
-  char *str;
-  int len;
-} mrb_procutil_data;
-
-static const struct mrb_data_type mrb_procutil_data_type = {
-  "mrb_procutil_data", mrb_free,
-};
-
-static mrb_value mrb_procutil_init(mrb_state *mrb, mrb_value self)
+static mrb_value mrb_procutil_sethostname(mrb_state *mrb, mrb_value self)
 {
-  mrb_procutil_data *data;
-  char *str;
+  char *newhostname;
   int len;
+  mrb_get_args(mrb, "s", &newhostname, &len);
 
-  data = (mrb_procutil_data *)DATA_PTR(self);
-  if (data) {
-    mrb_free(mrb, data);
+  if (sethostname(newhostname, len) < 0){
+    mrb_sys_fail(mrb, "sethostname failed.");
   }
-  DATA_TYPE(self) = &mrb_procutil_data_type;
-  DATA_PTR(self) = NULL;
-
-  mrb_get_args(mrb, "s", &str, &len);
-  data = (mrb_procutil_data *)mrb_malloc(mrb, sizeof(mrb_procutil_data));
-  data->str = str;
-  data->len = len;
-  DATA_PTR(self) = data;
-
-  return self;
-}
-
-static mrb_value mrb_procutil_hello(mrb_state *mrb, mrb_value self)
-{
-  mrb_procutil_data *data = DATA_PTR(self);
-
-  return mrb_str_new(mrb, data->str, data->len);
-}
-
-static mrb_value mrb_procutil_hi(mrb_state *mrb, mrb_value self)
-{
-  return mrb_str_new_cstr(mrb, "hi!!");
+  return mrb_str_new(mrb, newhostname, len);
 }
 
 void mrb_mruby_procutil_gem_init(mrb_state *mrb)
 {
     struct RClass *procutil;
-    procutil = mrb_define_class(mrb, "Procutil", mrb->object_class);
-    mrb_define_method(mrb, procutil, "initialize", mrb_procutil_init, MRB_ARGS_REQ(1));
-    mrb_define_method(mrb, procutil, "hello", mrb_procutil_hello, MRB_ARGS_NONE());
-    mrb_define_class_method(mrb, procutil, "hi", mrb_procutil_hi, MRB_ARGS_NONE());
+    procutil = mrb_define_module(mrb, "Procutil");
+
+    mrb_define_module_function(mrb, procutil, "sethostname", mrb_procutil_sethostname, MRB_ARGS_REQ(1));
+
     DONE;
 }
 
 void mrb_mruby_procutil_gem_final(mrb_state *mrb)
 {
 }
-

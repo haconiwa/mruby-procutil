@@ -1,5 +1,2 @@
-class Procutil
-  def bye
-    self.hello + " bye"
-  end
+module Procutil
 end

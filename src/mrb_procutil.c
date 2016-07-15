@@ -12,7 +12,6 @@
 #include "mruby/string.h"
 #include "mrb_procutil.h"
 
-#include <stdlib.h>
 #include <unistd.h>
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -40,7 +39,6 @@ static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)
   TRY_REOPEN(fp, "/dev/null", "r", stdin);
   TRY_REOPEN(fp, "/dev/null", "w", stdout);
   TRY_REOPEN(fp, "/dev/null", "w", stderr);
-  free(fp);
 
   return mrb_true_value();
 }

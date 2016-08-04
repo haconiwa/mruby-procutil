@@ -10,6 +10,7 @@
 #include "mruby/data.h"
 #include "mruby/error.h"
 #include "mruby/string.h"
+#include "mruby/array.h"
 #include "mrb_procutil.h"
 
 #include <sys/types.h>
@@ -59,6 +60,7 @@ static mrb_value mrb_procutil___system4(mrb_state *mrb, mrb_value self)
   int exit_status = -1, check_status;
   char *cmd;
   pid_t pid;
+  mrb_value ret;
 
   mrb_get_args(mrb, "ziii", &cmd, &stdin_fd, &stdout_fd, &stderr_fd);
 
@@ -73,9 +75,10 @@ static mrb_value mrb_procutil___system4(mrb_state *mrb, mrb_value self)
     /* see `man system(3)` */
     execl("/bin/sh", "sh", "-c", cmd, (char *)0);
   } else {
-    if(waitpid(pid, &check_status, 0) < 1) {
+    if(waitpid(pid, &check_status, 0) < 0) {
       mrb_sys_fail(mrb, "waitpid failed.");
     }
+
     if(WIFEXITED(check_status)) {
       exit_status = WEXITSTATUS(check_status);
     } else {
@@ -83,7 +86,10 @@ static mrb_value mrb_procutil___system4(mrb_state *mrb, mrb_value self)
     }
   }
 
-  return mrb_fixnum_value(exit_status);
+  ret = mrb_ary_new_capa(mrb, 2);
+  mrb_ary_push(mrb, ret, mrb_fixnum_value(pid));
+  mrb_ary_push(mrb, ret, mrb_fixnum_value(exit_status));
+  return ret;
 }
 
 void mrb_mruby_procutil_gem_init(mrb_state *mrb)

@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
 
@@ -38,6 +39,10 @@ static mrb_value mrb_procutil_sethostname(mrb_state *mrb, mrb_value self)
 
 static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)
 {
+  setsid();
+  signal(SIGHUP, SIG_IGN);
+  signal(SIGINT, SIG_IGN);
+
   /* TODO reopen to log file */
   FILE *fp;
   TRY_REOPEN(fp, "/dev/null", "r", stdin);

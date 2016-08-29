@@ -33,7 +33,7 @@ static mrb_value mrb_procutil_sethostname(mrb_state *mrb, mrb_value self)
 }
 
 #define TRY_REOPEN(fp, newfile, mode, oldfp) \
-  fp = freopen("/dev/null", "w", stdout);    \
+  fp = freopen(newfile, mode, oldfp);                  \
   if(fp == NULL) mrb_sys_fail(mrb, "freopen failed")
 
 static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)

@@ -33,6 +33,11 @@ static mrb_value mrb_procutil_sethostname(mrb_state *mrb, mrb_value self)
   return mrb_str_new(mrb, newhostname, len);
 }
 
+static mrb_value mrb_procutil_setsid(mrb_state *mrb, mrb_value self)
+{
+  return mrb_fixnum_value(setsid());
+}
+
 #define TRY_REOPEN(fp, newfile, mode, oldfp) \
   fp = freopen(newfile, mode, oldfp);                  \
   if(fp == NULL) mrb_sys_fail(mrb, "freopen failed")
@@ -103,6 +108,7 @@ void mrb_mruby_procutil_gem_init(mrb_state *mrb)
     procutil = mrb_define_module(mrb, "Procutil");
 
     mrb_define_module_function(mrb, procutil, "sethostname", mrb_procutil_sethostname, MRB_ARGS_REQ(1));
+    mrb_define_module_function(mrb, procutil, "setsid", mrb_procutil_setsid, MRB_ARGS_NONE());
     mrb_define_module_function(mrb, procutil, "daemon_fd_reopen", mrb_procutil_daemon_fd_reopen, MRB_ARGS_NONE());
     mrb_define_module_function(mrb, procutil, "__system4", mrb_procutil___system4, MRB_ARGS_REQ(4));
 

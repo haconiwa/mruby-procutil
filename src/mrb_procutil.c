@@ -16,7 +16,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <stdlib.h>
+#include <dirent.h>
+#include <string.h>
 #include <signal.h>
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -55,6 +58,30 @@ static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)
   TRY_REOPEN(fp, "/dev/null", "w", stderr);
 
   return mrb_true_value();
+}
+
+static mrb_value mrb_procutil_mark_cloexec(mrb_state *mrb, mrb_value self)
+{
+  DIR* d = opendir("/proc/self/fd");
+  struct dirent *dp;
+  while((dp = readdir(d)) != NULL) {
+    if(!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..") ||
+       !strcmp(dp->d_name, "0") || !strcmp(dp->d_name, "1") || !strcmp(dp->d_name, "2")) {
+      // skip ./../stdin/stdout/stderr
+    } else {
+      char *fileno_str = dp->d_name;
+      int fileno = (int)strtol(fileno_str, NULL, 0);
+      int flags = fcntl(fileno, F_GETFD);
+      if(flags < 0) {
+        mrb_sys_fail(mrb, "fcntl failed (get fd flags)");
+      }
+      if(fcntl(fileno, F_SETFD, flags | FD_CLOEXEC) < 0) {
+        mrb_sys_fail(mrb, "fcntl failed (set fd FD_CLOEXEC)");
+      }
+    }
+  }
+  closedir(d);
+  return mrb_nil_value();
 }
 
 /* Force to exit forked mruby process when dup2 failed */
@@ -110,6 +137,7 @@ void mrb_mruby_procutil_gem_init(mrb_state *mrb)
     mrb_define_module_function(mrb, procutil, "sethostname", mrb_procutil_sethostname, MRB_ARGS_REQ(1));
     mrb_define_module_function(mrb, procutil, "setsid", mrb_procutil_setsid, MRB_ARGS_NONE());
     mrb_define_module_function(mrb, procutil, "daemon_fd_reopen", mrb_procutil_daemon_fd_reopen, MRB_ARGS_NONE());
+    mrb_define_module_function(mrb, procutil, "mark_cloexec", mrb_procutil_mark_cloexec, MRB_ARGS_NONE());
     mrb_define_module_function(mrb, procutil, "__system4", mrb_procutil___system4, MRB_ARGS_REQ(4));
 
     DONE;

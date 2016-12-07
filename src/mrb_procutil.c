@@ -63,6 +63,10 @@ static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)
 static mrb_value mrb_procutil_mark_cloexec(mrb_state *mrb, mrb_value self)
 {
   DIR* d = opendir("/proc/self/fd");
+  if(! d){
+    mrb_sys_fail(mrb, "cannot open /proc/self/fd");
+  }
+
   struct dirent *dp;
   while((dp = readdir(d)) != NULL) {
     if(!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..") ||

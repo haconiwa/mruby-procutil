@@ -45,17 +45,37 @@ static mrb_value mrb_procutil_setsid(mrb_state *mrb, mrb_value self)
   fp = freopen(newfile, mode, oldfp);                  \
   if(fp == NULL) mrb_sys_fail(mrb, "freopen failed")
 
+/* Force to exit forked mruby process when dup2 failed */
+#define TRY_DUP2(oldfd, newfd)                  \
+  if(dup2(oldfd, newfd) < 0) {                  \
+    perror("dup2");                             \
+    _exit(-1);                                  \
+  }
+
 static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)
 {
   setsid();
   signal(SIGHUP, SIG_IGN);
   signal(SIGINT, SIG_IGN);
 
-  /* TODO reopen to log file */
   FILE *fp;
   TRY_REOPEN(fp, "/dev/null", "r", stdin);
   TRY_REOPEN(fp, "/dev/null", "w", stdout);
   TRY_REOPEN(fp, "/dev/null", "w", stderr);
+
+  return mrb_true_value();
+}
+
+static mrb_value mrb_procutil_fd_reopen3(mrb_state *mrb, mrb_value self)
+{
+  mrb_int stdin_fd = 0, stdout_fd = 1, stderr_fd = 2;
+
+  setsid();
+  mrb_get_args(mrb, "|iii", &stdin_fd, &stdout_fd, &stderr_fd);
+
+  TRY_DUP2(stdin_fd,  STDIN_FILENO);
+  TRY_DUP2(stdout_fd, STDOUT_FILENO);
+  TRY_DUP2(stderr_fd, STDERR_FILENO);
 
   return mrb_true_value();
 }
@@ -87,13 +107,6 @@ static mrb_value mrb_procutil_mark_cloexec(mrb_state *mrb, mrb_value self)
   closedir(d);
   return mrb_nil_value();
 }
-
-/* Force to exit forked mruby process when dup2 failed */
-#define TRY_DUP2(oldfd, newfd)                  \
-  if(dup2(oldfd, newfd) < 0) {                  \
-    perror("dup2");                             \
-    _exit(-1);                                  \
-  }
 
 static mrb_value mrb_procutil___system4(mrb_state *mrb, mrb_value self)
 {
@@ -141,6 +154,7 @@ void mrb_mruby_procutil_gem_init(mrb_state *mrb)
     mrb_define_module_function(mrb, procutil, "sethostname", mrb_procutil_sethostname, MRB_ARGS_REQ(1));
     mrb_define_module_function(mrb, procutil, "setsid", mrb_procutil_setsid, MRB_ARGS_NONE());
     mrb_define_module_function(mrb, procutil, "daemon_fd_reopen", mrb_procutil_daemon_fd_reopen, MRB_ARGS_NONE());
+    mrb_define_module_function(mrb, procutil, "fd_reopen3", mrb_procutil_fd_reopen3, MRB_ARGS_NONE());
     mrb_define_module_function(mrb, procutil, "mark_cloexec", mrb_procutil_mark_cloexec, MRB_ARGS_NONE());
     mrb_define_module_function(mrb, procutil, "__system4", mrb_procutil___system4, MRB_ARGS_REQ(4));
 

@@ -15,6 +15,7 @@ env:
   # - MRUBY_VERSION=1.2.0
   - MRUBY_VERSION=master
 script:
+  - rake format
   - rake test
 branches:
   only:

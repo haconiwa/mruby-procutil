@@ -1,4 +1,4 @@
-# mruby-procutil
+# mruby-procutil   [![Build Status](https://travis-ci.org/haconiwa/mruby-procutil.svg?branch=master)](https://travis-ci.org/haconiwa/mruby-procutil)
 
 Process controll utility for haconiwa
 

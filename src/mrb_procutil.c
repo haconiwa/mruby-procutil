@@ -22,9 +22,36 @@
 #include <dirent.h>
 #include <string.h>
 #include <signal.h>
+#include <errno.h>
+#include <stdarg.h>
 // clang-format on
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
+
+#define SYS_FAIL_MESSAGE_LENGTH 2048
+
+static void mrb_procutil_sys_fail(mrb_state *mrb, int error_no, const char *fmt, ...)
+{
+  char buf[1024];
+  char arg_msg[SYS_FAIL_MESSAGE_LENGTH];
+  char err_msg[SYS_FAIL_MESSAGE_LENGTH];
+  char *ret;
+  va_list args;
+
+  va_start(args, fmt);
+  vsnprintf(arg_msg, SYS_FAIL_MESSAGE_LENGTH, fmt, args);
+  va_end(args);
+
+  if ((ret = strerror_r(error_no, buf, 1024)) == NULL) {
+    snprintf(err_msg, SYS_FAIL_MESSAGE_LENGTH, "[BUG] strerror_r failed at %s:%s. Please report haconiwa-dev", __FILE__,
+             __func__);
+    mrb_sys_fail(mrb, err_msg);
+  }
+
+  snprintf(err_msg, SYS_FAIL_MESSAGE_LENGTH, "sys failed. errno: %d message: %s mrbgem message: %s", error_no, ret,
+           arg_msg);
+  mrb_sys_fail(mrb, err_msg);
+}
 
 static mrb_value mrb_procutil_sethostname(mrb_state *mrb, mrb_value self)
 {
@@ -33,31 +60,40 @@ static mrb_value mrb_procutil_sethostname(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "s", &newhostname, &len);
 
   if (sethostname(newhostname, len) < 0) {
-    mrb_sys_fail(mrb, "sethostname failed.");
+    mrb_procutil_sys_fail(mrb, errno, "sethostname failed.");
   }
   return mrb_str_new(mrb, newhostname, len);
 }
 
 static mrb_value mrb_procutil_setsid(mrb_state *mrb, mrb_value self)
 {
-  return mrb_fixnum_value(setsid());
+  int ret = setsid();
+
+  if (ret == -1) {
+    mrb_procutil_sys_fail(mrb, errno, "setsid failed.");
+  }
+
+  return mrb_fixnum_value(ret);
 }
 
 #define TRY_REOPEN(fp, newfile, mode, oldfp)                                                                           \
   fp = freopen(newfile, mode, oldfp);                                                                                  \
   if (fp == NULL)                                                                                                      \
-  mrb_sys_fail(mrb, "freopen failed")
+  mrb_procutil_sys_fail(mrb, errno, "freopen failed")
 
 /* Force to exit forked mruby process when dup2 failed */
 #define TRY_DUP2(oldfd, newfd)                                                                                         \
-  if (dup2(oldfd, newfd) < 0) {                                                                                        \
-    perror("dup2");                                                                                                    \
-    _exit(-1);                                                                                                         \
-  }
+  if (dup2(oldfd, newfd) < 0)                                                                                          \
+  mrb_procutil_sys_fail(mrb, errno, "dup2 failed")
 
 static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)
 {
-  setsid();
+  int ret = setsid();
+
+  if (ret == -1) {
+    mrb_procutil_sys_fail(mrb, errno, "setsid failed.");
+  }
+
   signal(SIGHUP, SIG_IGN);
   signal(SIGINT, SIG_IGN);
 
@@ -73,7 +109,12 @@ static mrb_value mrb_procutil_fd_reopen3(mrb_state *mrb, mrb_value self)
 {
   mrb_int stdin_fd = 0, stdout_fd = 1, stderr_fd = 2;
 
-  setsid();
+  int ret = setsid();
+
+  if (ret == -1) {
+    mrb_procutil_sys_fail(mrb, errno, "setsid failed.");
+  }
+
   mrb_get_args(mrb, "|iii", &stdin_fd, &stdout_fd, &stderr_fd);
 
   TRY_DUP2(stdin_fd, STDIN_FILENO);
@@ -86,8 +127,9 @@ static mrb_value mrb_procutil_fd_reopen3(mrb_state *mrb, mrb_value self)
 static mrb_value mrb_procutil_mark_cloexec(mrb_state *mrb, mrb_value self)
 {
   DIR *d = opendir("/proc/self/fd");
+
   if (!d) {
-    mrb_sys_fail(mrb, "cannot open /proc/self/fd");
+    mrb_procutil_sys_fail(mrb, errno, "cannot open /proc/self/fd");
   }
 
   struct dirent *dp;
@@ -100,10 +142,10 @@ static mrb_value mrb_procutil_mark_cloexec(mrb_state *mrb, mrb_value self)
       int fileno = (int)strtol(fileno_str, NULL, 0);
       int flags = fcntl(fileno, F_GETFD);
       if (flags < 0) {
-        mrb_sys_fail(mrb, "fcntl failed (get fd flags)");
+        mrb_procutil_sys_fail(mrb, errno, "fcntl failed (get fd flags)");
       }
       if (fcntl(fileno, F_SETFD, flags | FD_CLOEXEC) < 0) {
-        mrb_sys_fail(mrb, "fcntl failed (set fd FD_CLOEXEC)");
+        mrb_procutil_sys_fail(mrb, errno, "fcntl failed (set fd FD_CLOEXEC)");
       }
     }
   }
@@ -123,7 +165,7 @@ static mrb_value mrb_procutil___system4(mrb_state *mrb, mrb_value self)
 
   pid = fork();
   if (pid == -1) {
-    mrb_sys_fail(mrb, "fork failed.");
+    mrb_procutil_sys_fail(mrb, errno, "fork failed.");
   } else if (pid == 0) {
     TRY_DUP2(stdin_fd, STDIN_FILENO);
     TRY_DUP2(stdout_fd, STDOUT_FILENO);
@@ -131,9 +173,12 @@ static mrb_value mrb_procutil___system4(mrb_state *mrb, mrb_value self)
 
     /* see `man system(3)` */
     execl("/bin/sh", "sh", "-c", cmd, (char *)0);
+
+    mrb_procutil_sys_fail(mrb, errno, "execl failed.");
+
   } else {
     if (waitpid(pid, &check_status, 0) < 0) {
-      mrb_sys_fail(mrb, "waitpid failed.");
+      mrb_procutil_sys_fail(mrb, errno, "waitpid failed.");
     }
 
     if (WIFEXITED(check_status)) {

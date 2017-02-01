@@ -43,8 +43,8 @@ static void mrb_procutil_sys_fail(mrb_state *mrb, int error_no, const char *fmt,
   va_end(args);
 
   if ((ret = strerror_r(error_no, buf, 1024)) == NULL) {
-    mrb_procutil_sys_fail(mrb, errno, "[BUG] strerror_r failed at %s:%s. Please report haconiwa-dev", __FILE__,
-                          __func__);
+    snprintf(err_msg, SYS_FAIL_MESSAGE_LENGTH, "[BUG] strerror_r failed. errno: %d", errno);
+    mrb_sys_fail(mrb, err_msg);
   }
 
   snprintf(err_msg, SYS_FAIL_MESSAGE_LENGTH, "sys failed. errno: %d message: %s mrbgem message: %s", error_no, ret,

@@ -87,16 +87,8 @@ static mrb_value mrb_procutil_setsid(mrb_state *mrb, mrb_value self)
 
 static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)
 {
-  int ret = setsid();
-
-  if (ret == -1) {
-    mrb_procutil_sys_fail(mrb, errno, "setsid failed.");
-  }
-
-  signal(SIGHUP, SIG_IGN);
-  signal(SIGINT, SIG_IGN);
-
   FILE *fp;
+
   TRY_REOPEN(fp, "/dev/null", "r", stdin);
   TRY_REOPEN(fp, "/dev/null", "w", stdout);
   TRY_REOPEN(fp, "/dev/null", "w", stderr);
@@ -107,12 +99,6 @@ static mrb_value mrb_procutil_daemon_fd_reopen(mrb_state *mrb, mrb_value self)
 static mrb_value mrb_procutil_fd_reopen3(mrb_state *mrb, mrb_value self)
 {
   mrb_int stdin_fd = 0, stdout_fd = 1, stderr_fd = 2;
-
-  int ret = setsid();
-
-  if (ret == -1) {
-    mrb_procutil_sys_fail(mrb, errno, "setsid failed.");
-  }
 
   mrb_get_args(mrb, "|iii", &stdin_fd, &stdout_fd, &stderr_fd);
 

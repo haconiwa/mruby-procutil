@@ -55,7 +55,7 @@ static void mrb_procutil_sys_fail(mrb_state *mrb, int error_no, const char *fmt,
 static mrb_value mrb_procutil_sethostname(mrb_state *mrb, mrb_value self)
 {
   char *newhostname;
-  int len;
+  mrb_int len;
   mrb_get_args(mrb, "s", &newhostname, &len);
 
   if (sethostname(newhostname, len) < 0) {
@@ -140,7 +140,7 @@ static mrb_value mrb_procutil_mark_cloexec(mrb_state *mrb, mrb_value self)
 
 static mrb_value mrb_procutil___system4(mrb_state *mrb, mrb_value self)
 {
-  int stdin_fd, stdout_fd, stderr_fd;
+  mrb_int stdin_fd, stdout_fd, stderr_fd;
   int exit_status = -1, check_status;
   char *cmd;
   pid_t pid;

@@ -140,7 +140,7 @@ static mrb_value mrb_procutil_mark_cloexec(mrb_state *mrb, mrb_value self)
 
 static mrb_value mrb_procutil___system4(mrb_state *mrb, mrb_value self)
 {
-  int stdin_fd, stdout_fd, stderr_fd;
+  mrb_int stdin_fd, stdout_fd, stderr_fd;
   int exit_status = -1, check_status;
   char *cmd;
   pid_t pid;

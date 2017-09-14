@@ -55,7 +55,7 @@ static void mrb_procutil_sys_fail(mrb_state *mrb, int error_no, const char *fmt,
 static mrb_value mrb_procutil_sethostname(mrb_state *mrb, mrb_value self)
 {
   char *newhostname;
-  int len;
+  mrb_int len;
   mrb_get_args(mrb, "s", &newhostname, &len);
 
   if (sethostname(newhostname, len) < 0) {

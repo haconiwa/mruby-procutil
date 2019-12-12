@@ -187,7 +187,7 @@ void mrb_mruby_procutil_gem_init(mrb_state *mrb)
   mrb_define_module_function(mrb, procutil, "sethostname", mrb_procutil_sethostname, MRB_ARGS_REQ(1));
   mrb_define_module_function(mrb, procutil, "setsid", mrb_procutil_setsid, MRB_ARGS_NONE());
   mrb_define_module_function(mrb, procutil, "daemon_fd_reopen", mrb_procutil_daemon_fd_reopen, MRB_ARGS_NONE());
-  mrb_define_module_function(mrb, procutil, "fd_reopen3", mrb_procutil_fd_reopen3, MRB_ARGS_NONE());
+  mrb_define_module_function(mrb, procutil, "fd_reopen3", mrb_procutil_fd_reopen3, MRB_ARGS_REQ(3));
   mrb_define_module_function(mrb, procutil, "mark_cloexec", mrb_procutil_mark_cloexec, MRB_ARGS_NONE());
   mrb_define_module_function(mrb, procutil, "__system4", mrb_procutil___system4, MRB_ARGS_REQ(4));
 
